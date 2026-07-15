@@ -4,14 +4,16 @@ import api from '@/plugins/axios'
 export const useWhatsappStore = defineStore('whatsapp', {
   state: () => ({
     receivedMessages: [],
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
     loading: false,
   }),
   actions: {
-    // جلب الإعدادات الحالية من الباك إيند
     async fetchSettings() {
       this.loading = true
       try {
-        const response = await api.get('/get-settings') // تأكد من اسم الـ Route في لارافل
+        const response = await api.get('/get-settings')
         return response.data
       } catch (err) {
         console.error('فشل في جلب إعدادات Meta الحالية', err)
@@ -31,11 +33,15 @@ export const useWhatsappStore = defineStore('whatsapp', {
         this.loading = false
       }
     },
-    async fetchMessages() {
+    // 🌟 تم تحديث الدالة لاستقبال رقم الصفحة وتحديث الـ State ببيانات الـ Pagination القادمة من لارافل
+    async fetchMessages(page = 1) {
       this.loading = true
       try {
-        const response = await api.get('/received-messages')
-        this.receivedMessages = response.data
+        const response = await api.get(`/received-messages?page=${page}`)
+        this.receivedMessages = response.data.data
+        this.currentPage = response.data.current_page
+        this.totalPages = response.data.last_page
+        this.totalItems = response.data.total
       } catch (err) {
         console.error('حدث خطأ أثناء جلب الرسائل', err)
       } finally {
