@@ -162,19 +162,37 @@
                   </tr>
                 </thead>
                 <tbody>
+                  <!-- 🌟 نعرض الآن الرسائل المستلمة التي يجلبها الستور حسب الصفحة الحالية -->
                   <tr v-for="msg in whatsappStore.receivedMessages" :key="msg.id">
                     <td>{{ msg.phone }}</td>
                     <td>{{ msg.name || 'غير معروف' }}</td>
                     <td>{{ msg.message }}</td>
                     <td>{{ new Date(msg.received_at).toLocaleString('ar-EG') }}</td>
                   </tr>
-                  <tr v-if="whatsappStore.receivedMessages.length === 0">
+                  <tr v-if="whatsappStore.receivedMessages.length === 0 && !whatsappStore.loading">
                     <td colspan="4" class="text-center text-grey pa-5">
                       لا توجد رسائل مستلمة حتى الآن.
                     </td>
                   </tr>
+                  <!-- مؤشر تحميل بسيط عند تغيير الصفحة -->
+                  <tr v-if="whatsappStore.loading">
+                    <td colspan="4" class="text-center pa-5">
+                      <v-progress-circular indeterminate color="teal" size="30"></v-progress-circular>
+                    </td>
+                  </tr>
                 </tbody>
               </v-table>
+
+              <!-- 🌟 مكون الترقيم من Vuetify مرتبط بصفحات السيرفر 🌟 -->
+              <v-pagination
+                v-if="whatsappStore.totalPages > 1"
+                v-model="currentPage"
+                :length="whatsappStore.totalPages"
+                :total-visible="5"
+                :disabled="whatsappStore.loading"
+                active-color="teal"
+                class="mt-4"
+              ></v-pagination>
             </v-card>
           </v-window-item>
         </v-window>
@@ -196,6 +214,9 @@ const tab = ref('settings')
 const campaignDelay = ref(5)
 const excelFile = ref(null) 
 const downloadLoading = ref(false)
+
+// 🌟 متغير تتبع الصفحة الحالية في الواجهة
+const currentPage = ref(1)
 
 // متغيرات تتبع حالة التقدم للـ Queue
 const isSending = ref(false)
@@ -327,11 +348,17 @@ const downloadExcelFile = async () => {
 // مراقبة التبويبات لجلب البيانات تلقائياً عند الانتقال
 watch(tab, (newTab) => {
   if (newTab === 'messages') {
-    whatsappStore.fetchMessages()
+    currentPage.value = 1 // تصفير الصفحة للبداية النظيفة دائماً عند الدخول للتبويب
+    whatsappStore.fetchMessages(1)
   } else if (newTab === 'settings') {
     loadSettings()
   }
 }, { immediate: true })
+
+// 🌟 مراقبة تغيير الصفحة الحالية: عند ضغط المستخدم على زر الترقيم يتم جلب الصفحة المحددة من الباك إيند فوراً
+watch(currentPage, (newPage) => {
+  whatsappStore.fetchMessages(newPage)
+})
 
 onBeforeUnmount(() => {
   clearProgressInterval()
